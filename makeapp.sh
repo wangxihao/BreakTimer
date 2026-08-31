@@ -1,17 +1,37 @@
 #!/bin/zsh
-# 构建 BreakTimer.app 应用包（含图标），产物在 build/BreakTimer.app
+# 构建 BreakTimer 可分发版本：
+#   build/BreakTimer.app           通用二进制应用包（arm64 + x86_64，含图标）
+#   build/BreakTimer-<ver>.zip     应用压缩包
+#   build/BreakTimer-<ver>.dmg     拖拽安装镜像
 set -e
 cd "$(dirname "$0")"
 
-echo "==> swift build -c release"
-swift build -c release
-
+VERSION="1.0.0"
 APP="build/BreakTimer.app"
+
+echo "==> swift build -c release（arm64 + x86_64 分架构构建，lipo 合并）"
+swift build -c release --arch arm64
+swift build -c release --arch x86_64
+
+find_binary() {
+    for p in ".build/$1/release/BreakTimer" ".build/release/BreakTimer"; do
+        [ -f "$p" ] && { echo "$p"; return; }
+    done
+}
+ARM_BIN="$(find_binary arm64-apple-macosx)"
+X64_BIN="$(find_binary x86_64-apple-macosx)"
+[ -n "$ARM_BIN" ] && [ -n "$X64_BIN" ] || { echo "分架构构建产物缺失"; exit 1; }
+
+UNIVERSAL="build/.universal/BreakTimer"
+mkdir -p "$(dirname "$UNIVERSAL")"
+lipo -create -output "$UNIVERSAL" "$ARM_BIN" "$X64_BIN"
+BIN="$UNIVERSAL"
+
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/BreakTimer "$APP/Contents/MacOS/BreakTimer"
+cp "$BIN" "$APP/Contents/MacOS/BreakTimer"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -23,9 +43,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>
     <string>com.breaktimer.app</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>$VERSION</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>$VERSION</string>
     <key>CFBundleExecutable</key>
     <string>BreakTimer</string>
     <key>CFBundlePackageType</key>
@@ -66,7 +86,25 @@ else
     echo "    图标生成失败，跳过（不影响功能）"
 fi
 
-codesign --force -s - "$APP" 2>/dev/null || true
+# Ad-hoc 签名：本机可正常运行；发给他人时首次打开需「右键 → 打开」（未公证）
+codesign --force -s - --deep "$APP" 2>/dev/null || true
 
-echo "==> 完成: $APP"
+echo "==> 打包 ZIP"
+rm -f "build/BreakTimer-$VERSION.zip"
+ditto -c -k --sequesterRsrc --keepParent "$APP" "build/BreakTimer-$VERSION.zip"
+
+echo "==> 打包 DMG"
+STAGING="build/.dmg-staging"
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+cp -R "$APP" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+rm -f "build/BreakTimer-$VERSION.dmg"
+hdiutil create -volname "BreakTimer $VERSION" -srcfolder "$STAGING" -ov -format UDZO \
+    "build/BreakTimer-$VERSION.dmg" >/dev/null
+rm -rf "$STAGING"
+
+echo "==> 架构: $(lipo -info "$APP/Contents/MacOS/BreakTimer")"
+echo "==> 完成，产物:"
+ls -lh build/ | grep -E "BreakTimer" | awk '{print "    " $5 "  " $9}'
 echo "    运行: open $APP"

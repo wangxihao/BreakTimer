@@ -14,10 +14,20 @@ macOS 菜单栏番茄钟：自定义工作/休息时长，工作结束后弹出�
 - 可选：登录时自动启动（需以 .app 包运行）
 - 提醒浮层不会抢焦点，且能盖在全屏应用之上
 
+## 下载安装（推荐）
+
+到 [Releases](https://github.com/wangxihao/BreakTimer/releases) 下载 `BreakTimer-x.x.x.dmg`：
+
+1. 打开 DMG，把 BreakTimer 拖进 Applications
+2. 首次打开：**右键点图标 → 打开 → 再点打开**（应用为 ad-hoc 签名、未公证，直接双击会被 Gatekeeper 拦）
+3. 启动后自动开始第一轮工作，菜单栏 🍅 处控制一切
+
+支持 macOS 13+，Apple Silicon 与 Intel 通用。应用未公证，介意的话可自行 `makeapp.sh` 从源码构建。
+
 ## 构建与运行
 
 ```bash
-./makeapp.sh          # 构建并打包成 build/BreakTimer.app（含图标）
+./makeapp.sh          # 通用二进制（arm64+x86_64）+ .app + DMG + ZIP，产物在 build/
 open build/BreakTimer.app
 ```
 
