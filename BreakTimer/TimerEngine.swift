@@ -122,6 +122,7 @@ final class TimerEngine: ObservableObject {
 
     private func begin(_ newPhase: Phase, duration: TimeInterval) {
         let scaled = duration / debugSpeed
+        Diag.log("begin \(newPhase.rawValue) duration=\(Int(scaled))s autoStartNext=\(settings.autoStartNext)")
         phase = newPhase
         total = max(1, scaled)
         remaining = scaled
@@ -143,6 +144,7 @@ final class TimerEngine: ObservableObject {
     private func finishRest() {
         stopTicker()
         chime("Purr")
+        Diag.log("finishRest autoStartNext=\(settings.autoStartNext)")
         if settings.autoStartNext {
             startWork()
         } else {
@@ -151,6 +153,7 @@ final class TimerEngine: ObservableObject {
             total = 0
             isPaused = false
             awaitingResumeChoice = true
+            Diag.log("finishRest → idle，等待用户选择")
             onPhaseChanged?(.idle)
             onTick?()
         }

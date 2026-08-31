@@ -12,8 +12,21 @@ final class OverlayPanel: NSPanel {
         hasShadow = false
         hidesOnDeactivate = false
         acceptsMouseMovedEvents = true
+        ignoresMouseEvents = false
+        becomesKeyOnlyIfNeeded = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
     }
 
     override var canBecomeKey: Bool { true }
+
+    /// Esc 关闭浮层
+    var onEsc: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // Esc
+            onEsc?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
 }

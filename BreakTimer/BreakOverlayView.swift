@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// 休息提醒浮层内容：柔和暗色蒙版 + 毛玻璃卡片，Esc 可关闭。
+/// 休息提醒浮层的 SwiftUI 版本。
+/// 注意：应用运行时使用的是 OverlayCardController（AppKit 版，事件可靠）；
+/// 本文件仅供 --render-marketing 离屏出图使用（SwiftUI ImageRenderer 渲染素材图）。
 struct BreakOverlayView: View {
     @ObservedObject var engine: TimerEngine
     @ObservedObject var settings: SettingsStore
@@ -27,6 +29,9 @@ struct BreakOverlayView: View {
                 }
             }
             .transition(.opacity)
+            .onTapGesture {
+                Diag.log("overlay onTapGesture 命中")
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: engine.phase)
         .onExitCommand { onClose() }
@@ -98,6 +103,7 @@ struct BreakOverlayView: View {
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
                 Button {
+                    Diag.log("resumeCard 开始工作 按下")
                     engine.startWork()
                 } label: {
                     Label("开始工作", systemImage: "play.fill")

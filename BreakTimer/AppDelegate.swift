@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem?
     private var overlayPanel: OverlayPanel?
+    private var overlayController: OverlayCardController?
     private var setupWindow: NSWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -30,11 +31,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         showSetupWindow()
         refreshStatusTitle()
-        // 隐藏参数：启动即开始工作（调试/端到端验证用）
+        // 调试：--diag-speed N 将倒计时加速 N 倍（不受设置窗口滑块影响）；须在开跑前设置
+        if let idx = CommandLine.arguments.firstIndex(of: "--diag-speed"),
+           CommandLine.arguments.count > idx + 1, let speed = Double(CommandLine.arguments[idx + 1]) {
+            engine.debugSpeed = speed
+        }
         // 启动即开始第一轮工作（设置开启，或调试参数 --autostart）
         if settings.autoStartOnLaunch || CommandLine.arguments.contains("--autostart") {
             engine.startWork()
         }
+        installClickDiagnosticsIfNeeded()
     }
 
     // MARK: - 菜单栏
@@ -58,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 阶段切换 → 浮层显隐
 
     private func phaseChanged(_ phase: TimerEngine.Phase) {
+        Diag.log("phaseChanged \(phase.rawValue) awaiting=\(engine.awaitingResumeChoice) overlay=\(overlayPanel != nil)")
         switch phase {
         case .work:
             hideOverlay()
@@ -81,25 +88,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ?? NSScreen.screens.first
         guard let screen else { return }
         let panel = OverlayPanel(screenFrame: screen.frame)
-        let view = NSHostingView(rootView: BreakOverlayView(
-            engine: engine,
-            settings: settings,
-            onClose: { [weak self] in self?.overlayPrimaryAction() }
-        ))
-        view.sizingOptions = []
-        panel.contentView = view
+        let controller = OverlayCardController(engine: engine, settings: settings,
+                                               onPrimary: { [weak self] in self?.overlayPrimaryAction() })
+        controller.view.frame = NSRect(origin: .zero, size: screen.frame.size)
+        controller.view.autoresizingMask = [.width, .height]
+        panel.contentView = controller.view
+        panel.onEsc = { [weak self] in self?.overlayPrimaryAction() }
         panel.makeKeyAndOrderFront(nil)
+        panel.makeKey()
         panel.orderFrontRegardless()
         overlayPanel = panel
+        // contentView 不会保留 NSViewController，必须自己持有，否则按钮 target 悬空
+        overlayController = controller
+        Diag.log("showOverlay screen=\(screen.localizedName) frame=\(screen.frame) key=\(panel.isKeyWindow)")
     }
 
     private func hideOverlay() {
+        Diag.log("hideOverlay panel=\(overlayPanel != nil)")
         overlayPanel?.orderOut(nil)
         overlayPanel = nil
+        overlayController = nil
     }
 
     /// 浮层主操作（完成休息按钮 / Esc / 关闭按钮）
     private func overlayPrimaryAction() {
+        Diag.log("overlayPrimaryAction phase=\(engine.phase.rawValue)")
         if engine.phase == .rest {
             engine.finishRestEarly()
         } else {
@@ -163,6 +176,86 @@ extension AppDelegate: NSMenuDelegate {
     @objc private func menuStop() { engine.stopAll() }
     @objc private func menuSettings() { showSetupWindow() }
     @objc private func menuQuit() { NSApp.terminate(nil) }
+}
+
+// MARK: - 点击诊断（--diag-click N：等待“开始下一轮”卡片出现 N 秒后，进程内合成一次真实点击）
+
+extension AppDelegate {
+    private func installClickDiagnosticsIfNeeded() {
+        let args = CommandLine.arguments
+        guard let idx = args.firstIndex(of: "--diag-click"),
+              args.count > idx + 1, let delay = Double(args[idx + 1]) else { return }
+        Diag.log("click-test 安装 delay=\(delay)s")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.waitAndFireClick(delay: delay)
+        }
+    }
+
+    private func waitAndFireClick(delay: TimeInterval) {
+        let deadline = Date().addingTimeInterval(180)
+        while Date() < deadline {
+            if engine.phase == .idle && engine.awaitingResumeChoice { break }
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.2))
+        }
+        guard engine.awaitingResumeChoice else {
+            Diag.log("click-test 失败：180s 内未出现等待选择卡片（phase=\(engine.phase.rawValue)）")
+            exit(4)
+        }
+        Diag.log("click-test 卡片已出现，\(delay)s 后发送合成点击")
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.fireSyntheticClick()
+        }
+    }
+
+    /// 在进程内构造真实 NSEvent 并走 NSApp.sendEvent 的正常派发链路。
+    private func fireSyntheticClick() {
+        guard let panel = overlayPanel, let content = panel.contentView else {
+            Diag.log("click-test 失败：面板不存在")
+            exit(5)
+        }
+        func findButton(_ view: NSView, title: String) -> NSButton? {
+            if let button = view as? NSButton, button.title == title { return button }
+            for subview in view.subviews {
+                if let found = findButton(subview, title: title) { return found }
+            }
+            return nil
+        }
+        guard let button = findButton(content, title: "开始工作") else {
+            Diag.log("click-test 失败：视图树中找不到「开始工作」按钮")
+            exit(6)
+        }
+        let centerInWindow = button.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: nil)
+        let hit = content.hitTest(centerInWindow)
+        Diag.log("click-test 按钮 frame=\(button.frame) enabled=\(button.isEnabled) hitTest=\(hit.map { String(describing: type(of: $0)) } ?? "nil") keyWin=\(panel.isKeyWindow)")
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = NSEvent.mouseEvent(with: type,
+                                           location: centerInWindow,
+                                           modifierFlags: [],
+                                           timestamp: ProcessInfo.processInfo.systemUptime,
+                                           windowNumber: panel.windowNumber,
+                                           context: nil,
+                                           eventNumber: 0,
+                                           clickCount: 1,
+                                           pressure: 1)
+            if let event { NSApp.postEvent(event, atStart: false) }
+        }
+        Diag.log("click-test 已投递 postEvent location=\(centerInWindow)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            if engine.phase == .work {
+                Diag.log("click-test 结果: postEvent 成功")
+                exit(0)
+            }
+            Diag.log("click-test postEvent 无效，改用 performClick")
+            button.performClick(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self else { return }
+                let ok = engine.phase == .work
+                Diag.log("click-test 结果: \(ok ? "performClick 成功（事件派发层有问题）" : "仍然失败（action 接线问题）") phase=\(engine.phase.rawValue) panelVisible=\(overlayPanel != nil)")
+                exit(ok ? 0 : 3)
+            }
+        }
+    }
 }
 
 private extension NSMenu {
