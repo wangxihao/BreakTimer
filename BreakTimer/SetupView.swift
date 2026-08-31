@@ -67,7 +67,7 @@ struct SetupView: View {
                            step: Double) -> some View {
         HStack(spacing: 12) {
             Text(title).frame(width: 64, alignment: .leading)
-            Slider(value: value, in: range, step: step)
+            TimeSlider(value: value, range: range, step: step)
             Text("\(Int(value.wrappedValue.rounded())) 分钟")
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
@@ -80,18 +80,26 @@ struct SetupView: View {
     private var togglesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("提醒").font(.headline)
-            Toggle("休息结束自动开始下一轮工作", isOn: $settings.autoStartNext)
-            Toggle("工作结束前 10 秒轻提示音", isOn: $settings.warnBeforeBreak)
-            Toggle("播放提示音效", isOn: $settings.soundOn)
-            Toggle("登录时自动启动", isOn: $settings.launchAtLogin)
-                .disabled(!SettingsStore.isBundled)
+            toggleRow("启动后自动开始第一轮工作", isOn: $settings.autoStartOnLaunch)
+            toggleRow("休息结束自动开始下一轮工作", isOn: $settings.autoStartNext)
+            toggleRow("工作结束前 10 秒轻提示音", isOn: $settings.warnBeforeBreak)
+            toggleRow("播放提示音效", isOn: $settings.soundOn)
+            toggleRow("登录时自动启动", isOn: $settings.launchAtLogin,
+                      enabled: SettingsStore.isBundled)
             if !SettingsStore.isBundled {
                 Text("「登录时自动启动」需要以 .app 应用包方式运行才可用（运行 makeapp.sh 打包）")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
-        .toggleStyle(.switch)
+    }
+
+    private func toggleRow(_ title: String, isOn: Binding<Bool>, enabled: Bool = true) -> some View {
+        HStack {
+            Text(title).foregroundStyle(enabled ? Color.primary : Color.secondary)
+            Spacer()
+            SwitchToggle(isOn: isOn, isEnabled: enabled)
+        }
     }
 
     // MARK: 控制

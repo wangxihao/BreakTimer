@@ -13,6 +13,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--self-test") {
             EngineSelfTest.runAndExit()
         }
+        if CommandLine.arguments.contains("--render-marketing") {
+            let idx = CommandLine.arguments.firstIndex(of: "--render-marketing")!
+            let dir = CommandLine.arguments.count > idx + 1 ? CommandLine.arguments[idx + 1] : "/tmp/bt-marketing"
+            MainActor.assumeIsolated {
+                MarketingRenderer.runAndExit(dir)
+            }
+        }
         // 菜单栏应用：不显示 Dock 图标
         NSApp.setActivationPolicy(.accessory)
     }
@@ -24,7 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showSetupWindow()
         refreshStatusTitle()
         // 隐藏参数：启动即开始工作（调试/端到端验证用）
-        if CommandLine.arguments.contains("--autostart") {
+        // 启动即开始第一轮工作（设置开启，或调试参数 --autostart）
+        if settings.autoStartOnLaunch || CommandLine.arguments.contains("--autostart") {
             engine.startWork()
         }
     }

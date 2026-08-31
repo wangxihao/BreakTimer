@@ -50,9 +50,8 @@ struct BreakOverlayView: View {
                 .monospacedDigit()
                 .foregroundStyle(.teal)
                 .frame(minWidth: 300)
-            ProgressView(value: progress)
-                .tint(.teal)
-                .frame(width: 280)
+            progressBar
+                .frame(width: 280, height: 6)
             HStack(spacing: 12) {
                 Button {
                     engine.extendCurrent(byMinutes: 2)
@@ -129,7 +128,19 @@ struct BreakOverlayView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 32, style: .continuous)
-            .fill(.regularMaterial)
+            .fill(Color(white: 0.97).opacity(0.88))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
             .shadow(color: .black.opacity(0.30), radius: 36, y: 16)
+    }
+
+    /// 自绘进度条（离屏渲染友好）。
+    private var progressBar: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.teal.opacity(0.18))
+                Capsule().fill(Color.teal.gradient)
+                    .frame(width: max(6, geo.size.width * progress))
+            }
+        }
     }
 }

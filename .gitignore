@@ -4,3 +4,6 @@ build/
 
 # macOS
 .DS_Store
+
+# 公众号素材（可用 --render-marketing 重新生成）
+marketing/

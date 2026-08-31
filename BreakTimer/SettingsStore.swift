@@ -28,6 +28,9 @@ final class SettingsStore: ObservableObject {
             if !launchAtLogin, service.status == .enabled { try? service.unregister() }
         }
     }
+    @Published var autoStartOnLaunch: Bool {
+        didSet { UserDefaults.standard.set(autoStartOnLaunch, forKey: "autoStartOnLaunch") }
+    }
 
     /// 只有打包成 .app 时登录启动项才可用。
     static let isBundled = Bundle.main.bundleURL.pathExtension == "app"
@@ -40,5 +43,6 @@ final class SettingsStore: ObservableObject {
         warnBeforeBreak = (d.object(forKey: "warnBeforeBreak") as? Bool) ?? true
         soundOn = (d.object(forKey: "soundOn") as? Bool) ?? true
         launchAtLogin = Self.isBundled && SMAppService.mainApp.status == .enabled
+        autoStartOnLaunch = (d.object(forKey: "autoStartOnLaunch") as? Bool) ?? true
     }
 }
