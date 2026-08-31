@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 APP="build/BreakTimer.app"
 
 echo "==> swift build -c release（arm64 + x86_64 分架构构建，lipo 合并）"
