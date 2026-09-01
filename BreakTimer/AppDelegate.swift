@@ -41,6 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             engine.startWork()
         }
         installClickDiagnosticsIfNeeded()
+        // 用户自定义护眼图目录（往里丢 jpg/png 即可在休息时随机显示）
+        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("BreakTimer/backgrounds") {
+            try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        }
     }
 
     // MARK: - 菜单栏
@@ -100,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayPanel = panel
         // contentView 不会保留 NSViewController，必须自己持有，否则按钮 target 悬空
         overlayController = controller
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { controller.fadeInPhoto() }
         Diag.log("showOverlay screen=\(screen.localizedName) frame=\(screen.frame) key=\(panel.isKeyWindow)")
     }
 

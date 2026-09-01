@@ -22,6 +22,8 @@ final class OverlayCardController: NSViewController {
     private let resumeButtons = NSStackView()
     private var pauseButton: NSButton?
     private var buttonActions = [NSButton: () -> Void]()
+    private let photoView = NSView()
+    private var photoCenterConstraint: NSLayoutConstraint?
 
     init(engine: TimerEngine, settings: SettingsStore, onPrimary: @escaping () -> Void) {
         self.engine = engine
@@ -34,9 +36,75 @@ final class OverlayCardController: NSViewController {
 
     override func loadView() {
         view = GradientBackgroundView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
+        buildPhoto()
         buildCard()
         observeEngine()
         update()
+    }
+
+    /// 护眼图：屏幕宽高各一半，圆角，显示时淡入。
+    private func buildPhoto() {
+        photoView.wantsLayer = true
+        photoView.layer?.cornerRadius = 28
+        photoView.layer?.masksToBounds = true
+        photoView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        if let image = Self.randomBackgroundImage() {
+            photoView.layer?.contents = image
+            photoView.layer?.contentsGravity = .resizeAspectFill
+        }
+        photoView.alphaValue = 0
+        view.addSubview(photoView)
+        photoView.translatesAutoresizingMaskIntoConstraints = false
+        photoCenterConstraint = photoView.centerYAnchor.constraint(equalTo: view.centerYAnchor,
+                                                                  constant: -view.bounds.height * 0.14)
+        NSLayoutConstraint.activate([
+            photoView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.5),
+            photoView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.5),
+            photoView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            photoCenterConstraint!,
+        ])
+    }
+
+    /// 图片来源：用户图库（~/Library/Application Support/BreakTimer/backgrounds/）优先，
+    /// 其次应用内置背景（Resources/Backgrounds），随机选一张。
+    private static func randomBackgroundImage() -> CGImage? {
+        let fileManager = FileManager.default
+        var directories: [URL] = []
+        if let userDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("BreakTimer/backgrounds") {
+            directories.append(userDirectory)
+        }
+        if let resourceDirectory = Bundle.main.resourceURL?.appendingPathComponent("Backgrounds") {
+            directories.append(resourceDirectory)
+        }
+        let extensions = ["jpg", "jpeg", "png", "heic", "webp"]
+        for directory in directories {
+            let files = ((try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [])
+                .filter { extensions.contains($0.pathExtension.lowercased()) }
+            if let file = files.randomElement(),
+               let image = NSImage(contentsOf: file),
+               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                Diag.log("background: 使用 \(file.lastPathComponent)")
+                return cgImage
+            }
+        }
+        Diag.log("background: 无可用图片，仅显示渐变蒙版")
+        return nil
+    }
+
+    /// 图片淡入（在视图进入窗口后调用一次）。
+    func fadeInPhoto() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 1.4
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            photoView.animator().alphaValue = 1
+        }
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        // 图片垂直中心 = 屏幕中心偏上 14%
+        photoCenterConstraint?.constant = -view.bounds.height * 0.14
     }
 
     // MARK: - 界面搭建
@@ -131,7 +199,7 @@ final class OverlayCardController: NSViewController {
 
         NSLayoutConstraint.activate([
             card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            card.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            card.topAnchor.constraint(equalTo: photoView.bottomAnchor, constant: 36),
             card.widthAnchor.constraint(equalToConstant: 480),
             content.topAnchor.constraint(equalTo: card.topAnchor, constant: 40),
             content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -40),

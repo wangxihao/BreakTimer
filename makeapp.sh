@@ -62,6 +62,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+echo "==> 生成护眼背景"
+swift scripts/gen_backgrounds.swift "$APP/Contents/Resources/Backgrounds" >/dev/null && echo "    背景 OK（10 张）"
+
 echo "==> 生成图标"
 ICONSET="/tmp/BreakTimer.iconset"
 rm -rf "$ICONSET"
