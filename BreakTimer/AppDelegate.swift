@@ -9,6 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayPanel: OverlayPanel?
     private var overlayController: OverlayCardController?
     private var setupWindow: NSWindow?
+    /// 休息浮层弹出时设置窗口是否被暂时隐藏（用于结束后恢复）
+    private var setupWindowHiddenForOverlay = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         if CommandLine.arguments.contains("--self-test") {
@@ -105,15 +107,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayPanel = panel
         // contentView 不会保留 NSViewController，必须自己持有，否则按钮 target 悬空
         overlayController = controller
+        // 休息期间隐去设置窗口，结束后再恢复
+        if setupWindow?.isVisible == true {
+            setupWindow?.orderOut(nil)
+            setupWindowHiddenForOverlay = true
+            Diag.log("setupWindow 隐藏（休息中）")
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { controller.fadeInPhoto() }
         Diag.log("showOverlay screen=\(screen.localizedName) frame=\(screen.frame) key=\(panel.isKeyWindow)")
     }
 
     private func hideOverlay() {
-        Diag.log("hideOverlay panel=\(overlayPanel != nil)")
+        let hadPanel = overlayPanel != nil
+        Diag.log("hideOverlay panel=\(hadPanel)")
         overlayPanel?.orderOut(nil)
         overlayPanel = nil
         overlayController = nil
+        if hadPanel, setupWindowHiddenForOverlay {
+            setupWindowHiddenForOverlay = false
+            setupWindow?.makeKeyAndOrderFront(nil)
+            Diag.log("setupWindow 恢复显示")
+        }
     }
 
     /// 浮层主操作（完成休息按钮 / Esc / 关闭按钮）

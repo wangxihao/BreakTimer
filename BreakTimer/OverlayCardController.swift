@@ -173,13 +173,20 @@ final class OverlayCardController: NSViewController {
         button.setButtonType(.momentaryPushIn)
         if isPrimary {
             button.bezelColor = .white
-            button.contentTintColor = .black
         } else {
             button.bezelColor = NSColor(calibratedWhite: 0.08, alpha: 0.5)
-            button.contentTintColor = .white
         }
+        // 用 attributedTitle 把文字颜色写死，避免首帧渲染颜色不确定（白块→黑字闪烁）
+        button.attributedTitle = Self.attributedTitle(title, color: isPrimary ? .black : .white)
         buttonActions[button] = action
         return button
+    }
+
+    private static func attributedTitle(_ title: String, color: NSColor) -> NSAttributedString {
+        NSAttributedString(string: title, attributes: [
+            .foregroundColor: color,
+            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .large), weight: .medium),
+        ])
     }
 
     @objc private func buttonTapped(_ sender: NSButton) {
@@ -246,7 +253,9 @@ final class OverlayCardController: NSViewController {
         resumeButtons.isHidden = resting
         guard resting else { return }
         timerLabel.stringValue = clockText(engine.remaining)
-        pauseButton?.title = engine.isPaused ? "继续" : "暂停"
+        if let pause = pauseButton {
+            pause.attributedTitle = Self.attributedTitle(engine.isPaused ? "继续" : "暂停", color: .white)
+        }
         let fraction = engine.total > 0 ? min(1, max(0, engine.remaining / engine.total)) : 0
         progressFillWidth?.constant = 300 * fraction
         subtitleLabel.stringValue = "今日已完成 \(engine.todayCycles) 轮 · 下一轮工作 \(settings.workMinutes) 分钟"
