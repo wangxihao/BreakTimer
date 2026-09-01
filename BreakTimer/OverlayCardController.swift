@@ -34,7 +34,12 @@ final class OverlayCardController: NSViewController {
     required init?(coder: NSCoder) { fatalError("不支持") }
 
     override func loadView() {
-        view = GradientBackgroundView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
+        // 全屏磨砂玻璃罩层：实时模糊并压暗桌面，让卡片聚焦
+        let veil = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
+        veil.material = .hudWindow
+        veil.blendingMode = .behindWindow
+        veil.state = .active
+        view = veil
         buildCard()
         observeEngine()
         update()
@@ -234,6 +239,11 @@ final class OverlayCardController: NSViewController {
         photoView?.animator().alphaValue = 1
     }
 
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        Diag.log("overlay layout view=\(view.bounds) photo=\(photoView?.frame ?? .zero)")
+    }
+
     // MARK: - 状态刷新
 
     private func observeEngine() {
@@ -280,7 +290,7 @@ final class TintOverlayView: NSView {
     }
 }
 
-/// 全屏渐变蒙版背景。
+/// 全屏渐变蒙版背景（已由 NSVisualEffectView 磨砂罩层取代，保留备用）。
 final class GradientBackgroundView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
