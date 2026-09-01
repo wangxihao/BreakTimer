@@ -23,6 +23,7 @@ final class OverlayCardController: NSViewController {
     private var pauseButton: NSButton?
     private var buttonActions = [NSButton: () -> Void]()
     private var photoView: NSView?
+    private var cardView: NSView?
 
     init(engine: TimerEngine, settings: SettingsStore, onPrimary: @escaping () -> Void) {
         self.engine = engine
@@ -64,6 +65,7 @@ final class OverlayCardController: NSViewController {
             photo.layer?.backgroundColor = NSColor(calibratedRed: 0.13, green: 0.35, blue: 0.22, alpha: 1).cgColor
         }
         photoView = photo
+        cardView = card
         photo.alphaValue = 0 // 等待 fadeInPhoto 淡入
 
         let tint = TintOverlayView(frame: NSRect(x: 0, y: 0, width: 480, height: 300))
@@ -240,7 +242,7 @@ final class OverlayCardController: NSViewController {
 
     override func viewDidLayout() {
         super.viewDidLayout()
-        Diag.log("overlay layout view=\(view.bounds) photo=\(photoView?.frame ?? .zero)")
+        Diag.log("overlay layout view=\(view.bounds) photo=\(photoView?.frame ?? .zero) card=\(cardView?.frame ?? .zero)")
     }
 
     // MARK: - 状态刷新

@@ -157,6 +157,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.center()
             setupWindow = window
         }
+        // 休息浮层显示期间，设置窗口提到罩层之上（否则会被半透明蒙版盖成幽灵窗）
+        setupWindow?.level = overlayPanel != nil ? NSWindow.Level(1001) : .normal
         setupWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
