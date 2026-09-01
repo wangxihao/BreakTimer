@@ -36,10 +36,7 @@ final class OverlayCardController: NSViewController {
 
     override func loadView() {
         // 全屏灰色半透明罩层：均匀一致、不模糊，桌面内容可见但被压暗
-        let veil = NSView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
-        veil.wantsLayer = true
-        veil.layer?.backgroundColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.72).cgColor
-        view = veil
+        view = VeilView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
         buildCard()
         observeEngine()
         update()
@@ -270,6 +267,14 @@ final class OverlayCardController: NSViewController {
         let fraction = engine.total > 0 ? min(1, max(0, engine.remaining / engine.total)) : 0
         progressFillWidth?.constant = 300 * fraction
         subtitleLabel.stringValue = "今日已完成 \(engine.todayCycles) 轮 · 下一轮工作 \(settings.workMinutes) 分钟"
+    }
+}
+
+/// 全屏灰色半透明罩层：draw 重绘方式（layer.backgroundColor 在 contentView 根视图上不渲染）。
+final class VeilView: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.72).setFill()
+        bounds.fill()
     }
 }
 

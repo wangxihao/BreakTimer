@@ -43,6 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             engine.startWork()
         }
         installClickDiagnosticsIfNeeded()
+        // 调试：--show-overlay 启动即显示休息浮层（不计时），用于视觉检查
+        if CommandLine.arguments.contains("--show-overlay") {
+            engine.startRest()
+        }
         // 用户自定义护眼图目录（往里丢 jpg/png 即可在休息时随机显示）
         if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("BreakTimer/backgrounds") {
