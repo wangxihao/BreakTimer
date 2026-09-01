@@ -38,7 +38,7 @@ final class OverlayCardController: NSViewController {
         // 全屏灰色半透明罩层：均匀一致、不模糊，桌面内容可见但被压暗
         let veil = NSView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
         veil.wantsLayer = true
-        veil.layer?.backgroundColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.5).cgColor
+        veil.layer?.backgroundColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.72).cgColor
         view = veil
         buildCard()
         observeEngine()
