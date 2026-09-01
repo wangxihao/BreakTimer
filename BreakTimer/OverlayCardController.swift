@@ -34,11 +34,10 @@ final class OverlayCardController: NSViewController {
     required init?(coder: NSCoder) { fatalError("不支持") }
 
     override func loadView() {
-        // 全屏磨砂玻璃罩层：实时模糊并压暗桌面，让卡片聚焦
-        let veil = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
-        veil.material = .hudWindow
-        veil.blendingMode = .behindWindow
-        veil.state = .active
+        // 全屏灰色半透明罩层：均匀一致、不模糊，桌面内容可见但被压暗
+        let veil = NSView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
+        veil.wantsLayer = true
+        veil.layer?.backgroundColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.5).cgColor
         view = veil
         buildCard()
         observeEngine()
@@ -290,7 +289,7 @@ final class TintOverlayView: NSView {
     }
 }
 
-/// 全屏渐变蒙版背景（已由 NSVisualEffectView 磨砂罩层取代，保留备用）。
+/// 全屏渐变蒙版背景（已被固定灰色半透明罩层取代，保留备用）。
 final class GradientBackgroundView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
