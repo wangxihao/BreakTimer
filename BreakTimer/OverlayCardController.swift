@@ -24,6 +24,7 @@ final class OverlayCardController: NSViewController {
     private var buttonActions = [NSButton: () -> Void]()
     private var photoView: NSView?
     private var cardView: NSView?
+    private var veilView: VeilView?
 
     init(engine: TimerEngine, settings: SettingsStore, onPrimary: @escaping () -> Void) {
         self.engine = engine
@@ -35,8 +36,11 @@ final class OverlayCardController: NSViewController {
     required init?(coder: NSCoder) { fatalError("不支持") }
 
     override func loadView() {
-        // 全屏灰色半透明罩层：均匀一致、不模糊，桌面内容可见但被压暗
-        view = VeilView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000))
+        // 全屏灰色半透明罩层：均匀一致、不模糊，桌面内容可见但被压暗（深浅可在设置里调）
+        let veil = VeilView(frame: NSRect(x: 0, y: 0, width: 1600, height: 1000),
+                            opacity: settings.veilOpacity)
+        view = veil
+        veilView = veil
         buildCard()
         observeEngine()
         update()
@@ -249,6 +253,11 @@ final class OverlayCardController: NSViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.update() }
             .store(in: &cancellables)
+        // 休息期间在设置窗口拖动「蒙版深浅」滑块 → 蒙版实时重绘
+        settings.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.veilView?.setOpacity(self?.settings.veilOpacity ?? 0.6) }
+            .store(in: &cancellables)
     }
 
     private func update() {
@@ -271,12 +280,24 @@ final class OverlayCardController: NSViewController {
 }
 
 /// 全屏灰色半透明罩层：draw 重绘方式（layer.backgroundColor 在 contentView 根视图上不渲染）。
-/// 注意：半透明下最终颜色 = 罩色×不透明度 + 背景内容×透明度，背景中的亮色窗口会
-/// 隐约透出（这是「能看见」的代价）；0.95 时深浅差异已压到肉眼基本均匀的程度。
+/// 深浅由设置 veilOpacity 决定：越小越能看清内容（明暗差异更明显），越大越均匀。
 final class VeilView: NSView {
-    private static let veilColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.95)
+    private var fillColor: NSColor
+
+    init(frame: NSRect, opacity: Double) {
+        fillColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: CGFloat(opacity))
+        super.init(frame: frame)
+    }
+
+    required init?(coder: NSCoder) { fatalError("不支持") }
+
+    func setOpacity(_ opacity: Double) {
+        fillColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: CGFloat(opacity))
+        needsDisplay = true
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        Self.veilColor.setFill()
+        fillColor.setFill()
         bounds.fill()
     }
 }

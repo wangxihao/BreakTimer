@@ -80,6 +80,17 @@ struct SetupView: View {
     private var togglesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("提醒").font(.headline)
+            HStack(spacing: 12) {
+                Text("蒙版深浅").frame(width: 64, alignment: .leading)
+                TimeSlider(value: $settings.veilOpacity, range: 0.1...1.0, step: 0.05, tint: .gray)
+                Text("\(Int(settings.veilOpacity * 100))%")
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 72, alignment: .trailing)
+            }
+            Text("休息时屏幕灰纱的深浅：越浅越能看清屏幕内容（背后亮色窗口处会有明暗差），越深颜色越均匀。休息时打开本窗口可实时预览。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             toggleRow("启动后自动开始第一轮工作", isOn: $settings.autoStartOnLaunch)
             toggleRow("休息结束自动开始下一轮工作", isOn: $settings.autoStartNext)
             toggleRow("工作结束前 10 秒轻提示音", isOn: $settings.warnBeforeBreak)

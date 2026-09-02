@@ -31,6 +31,10 @@ final class SettingsStore: ObservableObject {
     @Published var autoStartOnLaunch: Bool {
         didSet { UserDefaults.standard.set(autoStartOnLaunch, forKey: "autoStartOnLaunch") }
     }
+    /// 休息蒙版不透明度（0.1–1.0）：越小越能看清屏幕内容，越大颜色越均匀
+    @Published var veilOpacity: Double {
+        didSet { UserDefaults.standard.set(veilOpacity, forKey: "veilOpacity") }
+    }
 
     /// 只有打包成 .app 时登录启动项才可用。
     static let isBundled = Bundle.main.bundleURL.pathExtension == "app"
@@ -44,5 +48,6 @@ final class SettingsStore: ObservableObject {
         soundOn = (d.object(forKey: "soundOn") as? Bool) ?? true
         launchAtLogin = Self.isBundled && SMAppService.mainApp.status == .enabled
         autoStartOnLaunch = (d.object(forKey: "autoStartOnLaunch") as? Bool) ?? true
+        veilOpacity = (d.object(forKey: "veilOpacity") as? Double) ?? 0.6
     }
 }
