@@ -271,9 +271,12 @@ final class OverlayCardController: NSViewController {
 }
 
 /// 全屏灰色半透明罩层：draw 重绘方式（layer.backgroundColor 在 contentView 根视图上不渲染）。
+/// 注意：半透明下最终颜色 = 罩色×不透明度 + 背景内容×透明度，背景中的亮色窗口会
+/// 隐约透出（这是「能看见」的代价）；0.95 时深浅差异已压到肉眼基本均匀的程度。
 final class VeilView: NSView {
+    private static let veilColor = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.95)
     override func draw(_ dirtyRect: NSRect) {
-        NSColor(srgbRed: 0.05, green: 0.06, blue: 0.06, alpha: 0.72).setFill()
+        Self.veilColor.setFill()
         bounds.fill()
     }
 }

@@ -46,6 +46,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 调试：--show-overlay 启动即显示休息浮层（不计时），用于视觉检查
         if CommandLine.arguments.contains("--show-overlay") {
             engine.startRest()
+            // --snapshot-overlay <路径>：2 秒后离屏导出浮层渲染内容（含透明通道）
+            if let idx = CommandLine.arguments.firstIndex(of: "--snapshot-overlay"),
+               CommandLine.arguments.count > idx + 1 {
+                let path = CommandLine.arguments[idx + 1]
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                    guard let self, let panel = overlayPanel, let content = panel.contentView else {
+                        FileHandle.standardError.write(Data("snapshot: 面板不存在\n".utf8))
+                        exit(6)
+                    }
+                    guard let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { exit(7) }
+                    content.cacheDisplay(in: content.bounds, to: rep)
+                    guard let data = rep.representation(using: .png, properties: [:]) else { exit(7) }
+                    try? data.write(to: URL(fileURLWithPath: path))
+                    print("snapshot written: \(path)")
+                    exit(0)
+                }
+            }
         }
         // 用户自定义护眼图目录（往里丢 jpg/png 即可在休息时随机显示）
         if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
